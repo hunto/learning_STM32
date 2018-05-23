@@ -88,3 +88,86 @@ Systick是一个递减的定时器，当定时器递减至0时，重载寄存器
       SysTick->VAL =0X00;       				 	    
   } 
   ```
+
+---
+
+# 二、 STM32定时器
+STM32中一共有11个定时器，其中2个高级控制定时器，4个通用定时器和2个基本定时器，以及2个看门狗定时器和1个系统嘀嗒定时器。其中系统嘀嗒定时器是前文中所描述的SysTick。
+
+---
+
+|定时器|计数器分辨率|计数器类型|预分频系数|产生DMA请求|捕获/比较通道|互补输出|
+|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+|TIM1|16位|向上、向下、向上/向下|1-65536之间的任意数|可以|4|有|
+|TIM2<br>TIM3<br>TIM4<br>TIM5|16位|向上、向下、向上/向下|1-65536之间的任意数|可以|4|没有|
+|TIM6<br>TIM7|16位|向上|1-65536之间的任意数|可以|0|没有|
+
+---
+
+## 1. 通用定时器主要功能
+* 16位向上、向下、向上/ 向下自动装载计数器 
+* 16位可编程(可以实时修改)预分频器，计数器时钟频率的
+           分频系数为1～65536之间的任意数值 
+* 4个独立通道： 
+    * 输入捕获 
+    * 输出比较 
+    * PWM生成(边缘或中间对齐模式) 
+    * 单脉冲模式输出 
+
+---
+
+## 2. 时钟来源
+计数器时钟可以由下列时钟源提供
+* 内部时钟（CK_INT）
+* 外部时钟模式1: 外部输入脚（TIx）
+* 外部时钟模式2: 外部触发输入（ETR）
+* 内部触发输入（ITRx）: 使用一个定时器作为另一个定时器的预分频器，如可以配置一个定时器`TIM1`作为另一个定时器`TIM2`的预分频器
+
+---
+
+## 3. 计数器模式
+TIM2-TIM5可以由向上计数、向下计数、向上向下双向计数。向上计数模式中，计数器从0计数到自动加载值(TIMx_ARR计数器内容)，然后重新从0开始计数并且产生一个计数器溢出事件。在向下模式中，计数器从自动装入的值(TIMx_ARR)开始向下计数到0，然后从自动装入的值重新开始，并产生一个计数器向下溢出事件。而中央对齐模式（向上/向下计数）是计数器从0开始计数到自动装入的值-1，产生一个计数器溢出事件，然后向下计数到1并且产生一个计数器溢出事件；然后再从0开始重新计数。
+
+---
+
+## 4. 使用通用定时器实现延时功能
+* TIM初始化
+```C
+#define SYSTICKPERIOD 1e-6
+#define SYSTICKFREQUENCY (1/SYSTICKPERIOD)
+void delay_init()
+{
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+    /* 寄存器重载值 */
+    TIM_TimeBaseStructure.TIM_Period = 999;  
+    /* 预分频: 计数器+1时间为：预分频/CPU主频 */
+    TIM_TimeBaseStructure.TIM_Prescaler = 
+    	        SystemCoreClock / SYSTICKFREQUENCY - 1;
+    /* 向上计数 */
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+    TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
+    /* 使能TIMx 在 ARR 上的预装载寄存器 */
+    TIM_ARRPreloadConfig(TIM2, ENABLE);
+    /* 设置更新请求源只在计数器上溢或下溢时产生中断 */
+    TIM_UpdateRequestConfig(TIM2, TIM_UpdateSource_Global);
+    TIM_ClearFlag(TIM2, TIM_FLAG_Update);
+}
+```
+---
+* 延时函数
+```C
+void delay_ms(u16 nms)
+{	 		  	  
+    /* 清零计数器 */
+    TIM2->CNT = 0;
+    TIM_Cmd(TIM2, ENABLE);
+	
+    for (int n = 0; n < nms; n++) {
+        /* 等待一个延时单位结束 */
+        while (TIM_GetFlagStatus(TIM2, TIM_FLAG_Update) != SET) ;
+            TIM_ClearFlag(TIM2, TIM_FLAG_Update);
+    } 
+    TIM_Cmd(TIM2, DISABLE);
+} 
+```
