@@ -40,19 +40,19 @@ void Key_Init(void) {
 #define KEY_UP 1
 u8 Key_scan(void) {
 #if KEY_UP
-	static u8 key_down_0 = 0, key_down_1 = 0;
+	static u8 key_down = 0;
 	if (READ_KEY == KEY_ON) {
 		/* 按下状态 */
 		delay_ms(10); // 消抖
 		if (READ_KEY == KEY_ON) {
-			key_down_0 = 1;
+			key_down = 1;
 		}
 	}
 	else {
 		delay_ms(10); // 消抖
 		if (READ_KEY == KEY_OFF) {
-			if (key_down_0 == 1) {
-				key_down_0 = 0;
+			if (key_down == 1) {
+				key_down = 0;
 				return KEY_BEEP;
 			}
 		}
