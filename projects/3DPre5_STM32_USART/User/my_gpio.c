@@ -10,6 +10,7 @@ void initGPIO(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;                      //USART1 TX
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;             //复用推挽输出
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);                     //A端口 
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;                  //USART1 RX
